@@ -45,9 +45,7 @@ Scheduler::Scheduler(
       std::make_shared<better::optional<EventDispatcher const>>();
 
   auto uiManager = std::make_shared<UIManager>(
-      runtimeExecutor_,
-      schedulerToolbox.backgroundExecutor,
-      schedulerToolbox.garbageCollectionTrigger);
+      runtimeExecutor_, schedulerToolbox.backgroundExecutor);
   auto eventOwnerBox = std::make_shared<EventBeat::OwnerBox>();
   eventOwnerBox->owner = eventDispatcher_;
 
@@ -68,6 +66,14 @@ Scheduler::Scheduler(
     uiManager->updateState(stateUpdate);
   };
 
+#ifdef ANDROID
+  auto unbatchedQueuesOnly =
+      reactNativeConfig_->getBool("react_fabric:unbatched_queues_only_android");
+#else
+  auto unbatchedQueuesOnly =
+      reactNativeConfig_->getBool("react_fabric:unbatched_queues_only_ios");
+#endif
+
   // Creating an `EventDispatcher` instance inside the already allocated
   // container (inside the optional).
   eventDispatcher_->emplace(
@@ -75,7 +81,8 @@ Scheduler::Scheduler(
       statePipe,
       schedulerToolbox.synchronousEventBeatFactory,
       schedulerToolbox.asynchronousEventBeatFactory,
-      eventOwnerBox);
+      eventOwnerBox,
+      unbatchedQueuesOnly);
 
   // Casting to `std::shared_ptr<EventDispatcher const>`.
   auto eventDispatcher =
@@ -130,8 +137,7 @@ Scheduler::Scheduler(
 #else
   removeOutstandingSurfacesOnDestruction_ = reactNativeConfig_->getBool(
       "react_fabric:remove_outstanding_surfaces_on_destruction_ios");
-  enableNewDiffer_ =
-      reactNativeConfig_->getBool("react_fabric:enable_new_differ_h1_2021_ios");
+  enableNewDiffer_ = true;
 #endif
 }
 
